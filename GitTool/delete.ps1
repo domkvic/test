@@ -8,12 +8,10 @@ $REMOTE_NAME = $h.Get_Item("RemoteName")
 Write-Host "Running Config Period: $PERIOD"
 Write-Host "==================================="
 
-cd $gitPath
-
-if ([string]::IsNullOrWhitespace($(git log -1 --since=$PERIOD "$REMOTE_NAME/$branchName")))
+if ([string]::IsNullOrWhitespace($(git -C $gitPath log -1 --since=$PERIOD "$REMOTE_NAME/$branchName")))
 {	
 	Write-Host "Running Delete branch [$branchName]"
-	git push $REMOTE_NAME --delete $branchName
+	git -C $gitPath push $REMOTE_NAME --delete $branchName
 	"$branchName	--deleteTime: $('{0:MM/dd/yyyy} {0:HH:mm:ss}' -f (Get-Date))" | Out-File -FilePath ".\DeletedBranchs-$currentTime.txt" -Append
 }
 else
