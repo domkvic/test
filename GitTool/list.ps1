@@ -5,10 +5,11 @@ Write-Host "Running Config Period: $PERIOD"
 Write-Host "==================================="
 $currentTime = $('{0:MMddyyyy}{0:HHmmss}' -f (Get-Date))
 
+git -C $gitPath fetch
 ForEach ($k in $(git -C $gitPath branch -r))
 {
 	Write-Host "Running branch $k"
-	if ([string]::IsNullOrWhitespace($(git log -1 --since=$PERIOD -s $k.Trim())))
+	if ([string]::IsNullOrWhitespace($(git -C $gitPath log -1 --since=$PERIOD -s $k.Trim())))
 	{
 		"latest commit: $(git -C $gitPath log -1 --format=%cd -s $k.Trim()) --$($k.Trim())" | Out-File -FilePath ".\Branchs-$currentTime.txt" -Append
 	}
