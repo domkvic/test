@@ -1,24 +1,26 @@
-﻿$filepath = $args[0]
-$currentTime = $('{0:MMddyyyy}' -f (Get-Date))
+﻿param (
+    [string]$time,
+    [switch]$f = $false
+)
+
+$REMOTE_NAME = "origin"
+$IGNORE_FILE = "ignoreBranchs"
 
 Get-Content "$PSScriptRoot\config" | foreach-object -begin {$h=@{}} -process { $k = [regex]::split($_,'='); if(($k[0].CompareTo("") -ne 0) -and ($k[0].StartsWith("[") -ne $True)) { $h.Add($k[0], $k[1]) } }
 $gitPath = $h.Get_Item("GitLocalPath")
-$PERIOD = $h.Get_Item("Period")
-$REMOTE_NAME = $h.Get_Item("RemoteName")
-Write-Host "Running Config Period: $PERIOD"
-Write-Host "==================================="
+$currentTime = $('{0:MMddyyyy}' -f (Get-Date))
 
-git -C $gitPath fetch
-$answer = Read-Host "Delete all branch in $filepath (Y/N) ?"
-while("y","n" -notcontains $answer)
+$ignoreBranchs = Get-Content ".\$IGNORE_FILE"
+
+function delete($listBranchs)
 {
-	$answer = Read-Host "Delete all branch in $filepath (Y/N) "
-}
-if("y" -eq $answer)
-{
-	foreach($branchName in Get-Content ".\$filepath") 
+	foreach($branchName in $listBranchs) 
 	{
-		if ([string]::IsNullOrWhitespace($(git -C $gitPath log -1 --since=$PERIOD "$REMOTE_NAME/$branchName")))
+		if ($ignoreBranchs -Contains $branchName)
+		{
+			continue
+		}
+		if ([string]::IsNullOrWhitespace($(git -C $gitPath log -1 --since=$time "$REMOTE_NAME/$branchName")))
 		{
 			Write-Host "-------------------------------------------"
 			Write-Host "--Deleting branch [$branchName]"
@@ -31,4 +33,42 @@ if("y" -eq $answer)
 		}
 	}
 }
+
+Write-Host "Running Config Time: $time"
+Write-Host "==================================="
+
+git -C $gitPath fetch
+
+$listBranchs = New-Object System.Collections.Generic.List[string]
+ForEach ($branch in $(git -C $gitPath branch -r))
+{
+	$branchName = $branch.Trim().SubString($REMOTE_NAME.Length + 1, $branch.Trim().Length - ($REMOTE_NAME.Length + 1))
+	if ($ignoreBranchs -Contains $branchName)
+	{
+		continue
+	}
+	if ([string]::IsNullOrWhitespace($(git -C $gitPath log -1 --since=$time -s $branch.Trim())))
+	{
+		$listBranchs.Add($branchName)
+		Write-Host "--$branchName"
+	}
+}
+
+if ($f)
+{
+	delete $listBranchs
+}
+else
+{
+	$answer = Read-Host "Delete all branch above (Y/N) ?"
+	while("Y","N" -notcontains $answer)
+{
+	$answer = Read-Host "Delete all branch above (Y/N) "
+}
+	if("Y" -eq $answer)
+	{
+		delete $listBranchs
+	}
+}
+
 Write-Host "Done"
