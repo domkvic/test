@@ -4,19 +4,35 @@
 )
 
 $REMOTE_NAME = "origin"
-$IGNORE_FILE = "ignoreBranchs"
+$IGNORE_BRANCH = "ignoreBranchs"
+$IGNORE_FEATURE = "ignoreFeatures"
 
 Get-Content "$PSScriptRoot\config" | foreach-object -begin {$h=@{}} -process { $k = [regex]::split($_,'='); if(($k[0].CompareTo("") -ne 0) -and ($k[0].StartsWith("[") -ne $True)) { $h.Add($k[0], $k[1]) } }
 $gitPath = $h.Get_Item("GitLocalPath")
 $currentTime = $('{0:MMddyyyy}' -f (Get-Date))
 
 $ignoreBranchs = Get-Content ".\$IGNORE_FILE"
+$ignoreFeatures = Get-Content ".\$IGNORE_FEATURE"
+
+function isIgnoreFeature($branchName)
+{
+	$result = 0
+	foreach($feature in $ignoreFeatures) 
+	{
+		if ($branchName -Like "$feature*")
+		{
+			$result = 1
+			break
+		}
+	}
+	exit $result
+}
 
 function delete($listBranchs)
 {
 	foreach($branchName in $listBranchs) 
 	{
-		if ($ignoreBranchs -Contains $branchName)
+		if (($ignoreBranchs -Contains $branchName) -or ([bool](isIgnoreFeature $branchName)))
 		{
 			continue
 		}
